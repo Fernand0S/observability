@@ -1,4 +1,4 @@
-![Observability](https://user-images.githubusercontent.com/32446123/235222449-3b800cf5-cb24-43ce-a37e-77d7ffb4ddc3.jpeg)
+![grafana-flow (1)](https://user-images.githubusercontent.com/32446123/235222658-13f1a0af-455e-4c1e-ae25-69451394aad9.png)
 
 # Observability
 Monitoring and Obserbility
