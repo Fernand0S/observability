@@ -1,0 +1,9 @@
+STACK_VOLUME=/{volume}
+PROMETHEUS_RETENTION=90d
+URL_GRAFANA=http://url
+SMTP_HOST=smtp.domain.com
+SMTP_FROM_ADDRESS=emailaddress@domain
+SMTP_FROM_NAME=TUX - Grafana
+SMTP_EHLO=domain
+TEAMS_WEBHOOK=webhook-microsoft-teams
+INSTALL_PLUGINS=grafana-piechart-panel,jdbranham-diagram-panel,snuids-trafficlights-panel,camptocamp-prometheus-alertmanager-datasource,doitintl-bigquery-datasource
