@@ -1,0 +1,21 @@
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
+
+alerting:
+  alertmanagers:
+  - static_configs:
+    - targets:
+      - alertmanager:9093
+
+rule_files:
+      - '/etc/prometheus/config/alert.rules'
+
+scrape_configs:
+  - job_name: 'node'
+    scrape_interval: 60s
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['ip.address:port_default' ]
+        labels:
+          group: 'XPTO'
