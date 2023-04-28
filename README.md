@@ -1,3 +1,5 @@
+![Observability](https://user-images.githubusercontent.com/32446123/235222449-3b800cf5-cb24-43ce-a37e-77d7ffb4ddc3.jpeg)
+
 # Observability
 Monitoring and Obserbility
 
