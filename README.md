@@ -7,3 +7,5 @@ This is document is for create of containers of observability. The stack compose
 
 * Necessary create docker-compose.yml or execute portainer this is stack. 
 * Necessary create archive .env for the stack. 
+* You can modified ports used containers. 
+
