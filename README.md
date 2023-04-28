@@ -7,5 +7,6 @@ This is document is for create of containers of observability. The stack compose
 
 * Necessary create docker-compose.yml or execute portainer this is stack. 
 * Necessary create archive .env for the stack. 
+* Necessary create in volumes next directory (alertmanager - config and data)  (grafana - data, config, plugins and png) (prometheus - config and data)
 * You can modified ports used containers. 
 
