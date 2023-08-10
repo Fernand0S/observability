@@ -17,7 +17,6 @@ cp /node_exporter.service /etc/systemd/system/
 chown node_exporter:node_exporter /usr/local/bin/node_exporter
 
 #Modifica informação node_exporter
-
 echo="
 [Unit]
 Description=Prometheus Node Exporter
