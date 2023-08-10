@@ -5,7 +5,7 @@ useradd -M -r -s /bin/false node_exporter
 cd /tmp
 
 #Download Node Exporter
-wget https://github.com/prometheus/node_exporter/releases/download/v0.18.1/node_exporter-0.18.1.linux-amd64.tar.gz -P /tmp
+wget https://github.com/prometheus/node_exporter/releases/download/v0.18.1/node_exporter-0.18.1.linux-amd64.tar.gz
 
 #Descompactando pacote Node Exporter
 tar xzf node_exporter-0.18.1.linux-amd64.tar.gz
