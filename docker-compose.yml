@@ -1,12 +1,139 @@
 version: '3.6'
-
 networks:
   net:
     driver: overlay
     attachable: true
-
 services:
-
+  pgsql:
+    image: postgres:13
+    volumes:
+      - ${STACK_VOLUME}/pgsql/data/:/var/lib/postgresql/data
+    environment:
+      - TZ=America/Sao_Paulo
+      - POSTGRES_DB=zabbix_db
+      - POSTGRES_USER=root
+      - POSTGRES_PASSWORD=y7QKucyMrHLNzpv7
+      - PGSQL_ROOT_PASSWORD=y7QKucyMrHLNzpv7
+    deploy:
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 128M
+        reservations:
+          memory: 96M
+          cpus: "0.25"
+    ports:
+      - 45432:5432
+    networks:
+      - net
+  zabbix-server:
+    image: zabbix/zabbix-server-pgsql:centos-6.0.21
+    privileged: true
+    user: root
+    volumes:
+      - ${STACK_VOLUME}/zabbix/data/usr/lib/zabbix/alertscripts:/usr/lib/zabbix/alertscripts:ro
+      - ${STACK_VOLUME}/zabbix/data/usr/lib/zabbix/extrnalscripts:/usr/lib/zabbix/externalscripts:ro
+      - ${STACK_VOLUME}/zabbix/data/var/lib/zabbix/modules:/var/lib/zabbix/modules:ro
+      - ${STACK_VOLUME}/zabbix/data/var/lib/zabbix/enc:/var/lib/zabbix/enc:ro
+      - ${STACK_VOLUME}/zabbix/data/var/lib/zabbix/ssh_keys:/var/lib/zabbix/ssh_keys:ro
+      - ${STACK_VOLUME}/zabbix/data/var/lib/zabbix/mibs:/var/lib/zabbix/mibs:ro
+      - ${STACK_VOLUME}/zabbix/data/var/lib/zabbix/snmptraps:/var/lib/zabbix/snmptraps:ro
+      - ${STACK_VOLUME}/zabbix/data/var/lib/zabbix/ssl/certs:/var/lib/zabbix/ssl/certs:ro
+      - ${STACK_VOLUME}/zabbix/data/var/lib/zabbix/ssl/keys:/var/lib/zabbix/ssl/keys:ro
+    environment:
+      - TZ=America/Sao_Paulo
+      - DB_SERVER_HOST=pgsql
+      - POSTGRES_DB=zabbix_db
+      - POSTGRES_USER=root
+      - POSTGRES_PASSWORD=y7QKucyMrHLNzpv7
+      - PGSQL_ROOT_PASSWORD=y7QKucyMrHLNzpv7
+      - ZBX_ENABLE_SNMP_TRAPS=true
+      - ZBX_STARTPOLLERS=5
+      - ZBX_STARTPINGERS=1
+      - ZBX_LISTENPORT=10051
+      - ZBX_HOUSEKEEPINGFREQUENCY=1
+      - ZBX_MAXHOUSEKEEPERDELETE=5000
+      - ZBX_PROBLEMHOUSEKEEPINGFREQUENCY=60
+      - ZBX_SENDERFREQUENCY=30
+      - ZBX_CACHEUPDATEFREQUENCY=10
+      - ZBX_STARTDBSYNCERS=4
+      - ZBX_EXPORTFILESIZE=1G 
+      - ZBX_HISTORYCACHESIZE=16M
+      - ZBX_HISTORYINDEXCACHESIZE=4M
+      - ZBX_HISTORYSTORAGEDATEINDEX=0 
+      - ZBX_TRENDCACHESIZE=4M
+      - ZBX_TRENDFUNCTIONCACHESIZE=4M
+      - ZBX_VALUECACHESIZE=8M
+      - ZBX_UNREACHABLEPERIOD=45
+      - ZBX_UNAVAILABLEDELAY=60
+      - ZBX_UNREACHABLEDELAY=15
+      - ZBX_LOGSLOWQUERIES=3000
+    depends_on:
+      - pgsql
+    deploy:
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+        reservations:
+          memory: 256M
+          cpus: "0.25"
+    ports:
+      - 10051:10051
+    networks:
+      - net
+  zabbix-frontend:
+    image: zabbix/zabbix-web-nginx-pgsql:6.0-ubuntu-latest
+    ports:
+      - '48080:8080'
+      - '8443:8443'
+    environment:
+      - PHP_TZ=America/Sao_Paulo
+      - ZBX_SERVER_NAME=zabbix-server
+      - DB_SERVER_HOST=pgsql
+      - POSTGRES_DB=zabbix_db
+      - POSTGRES_USER=root
+      - POSTGRES_PASSWORD=y7QKucyMrHLNzpv7
+      - PGSQL_ROOT_PASSWORD=y7QKucyMrHLNzpv7     
+      - ZBX_SERVER_HOST=zabbix-server
+      - ZBX_HOSTNAME=Zabbix server
+      - ZBX_SERVER_PORT=10051
+    depends_on:
+      - pgsql
+      - zabbix-server
+    networks:
+      - net
+  zabbix-agent:
+    user: root
+    image: zabbix-agent:v2
+    volumes:
+      - ${STACK_VOLUME}/zabbix/zabbix-agent/data/var/run:/var/run
+    privileged: true
+    ports:
+      - '10050:10050'
+    environment:
+      - ZBX_HOSTNAME=Zabbix server
+      - ZBX_SERVER_HOST=zabbix-server
+    links:
+      - zabbix-server
+    networks:
+      - net
+  zabbix-snmptraps:
+    user: root
+    image: zabbix/zabbix-snmptraps:6.0-centos-latest
+    volumes:
+      - ${STACK_VOLUME}/zabbix/zabbix-snmptraps/data:/var/lib/zabbix/snmptraps:rw
+    privileged: true
+    ports:
+      - "161:161/udp"
+    links:
+      - zabbix-server
+    networks:
+      - net  
   grafana:
     image: grafana/grafana:8.5.10-ubuntu
     user: root
@@ -17,28 +144,32 @@ services:
       - TZ=America/Sao_Paulo
       - GF_INSTALL_PLUGINS=${INSTALL_PLUGINS}
       - GF_SERVER_ROOT_URL=${URL_GRAFANA}
-     #- GF_INSTALL_IMAGE_RENDERER_PLUGIN=true
       - GF_SMTP_ENABLED=true
       - GF_SMTP_HOST=${SMTP_HOST}
       - GF_SMTP_FROM_ADDRESS=${SMTP_FROM_ADDRESS}
       - GF_SMTP_FROM_NAME=${SMTP_FROM_NAME}
       - GF_SMTP_EHLO_IDENTITY=${SMTP_EHLO}
-      - GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS=${ALLOW_LOADING_UNSIGNED_PLUGINS}
+    links:
+      - zabbix-server
+      - pgsql
+    depends_on:
+      - pgsql
+      - zabbix-server
     deploy:
       restart_policy:
         condition: on-failure
       resources:
         limits:
-          cpus: "1"
-          memory: 2048M
-        reservations:
-          memory: 1024M
           cpus: "0.5"
+          memory: 384M
+        reservations:
+          memory: 256M
+          cpus: "0.25"
     ports:
-      - 49200:3000
+      - 43000:3000
     networks:
       - net
-      
+
   prometheus:
     image: prom/prometheus:v2.40.7
     environment:
@@ -51,27 +182,24 @@ services:
       - '--web.console.libraries=/etc/prometheus/console_libraries'
       - '--web.console.templates=/etc/prometheus/consoles'
       - '--web.enable-lifecycle'
-
     volumes:
       - ${STACK_VOLUME}/prometheus/data/:/prometheus/:rw
       - ${STACK_VOLUME}/prometheus/config/prometheus.yml:/etc/prometheus/prometheus.yml:rw
       - ${STACK_VOLUME}/prometheus/config/alert.rules:/etc/prometheus/alert.rules:rw
     deploy:
-
       restart_policy:
         condition: on-failure
       resources:
         limits:
-          cpus: "1"
-          memory: 256M
+          cpus: "0.75"
+          memory: 128M
         reservations:
-          memory: 256M
-          cpus: "0.5"
+          memory: 96M
+          cpus: "0.25"
     ports:
-      - 49300:9090
+      - 49090:9090
     networks:
       - net
-    
   alertmanager:
     image: prom/alertmanager:v0.23.0
     environment:
@@ -85,16 +213,15 @@ services:
         condition: on-failure
       resources:
         limits:
-          cpus: "0.25"
+          cpus: "0.3"
           memory: 96M
         reservations:
           memory: 50M
-          cpus: "0.1"
+          cpus: "0.2"
     ports:
-      - 49400:9093
+      - 49093:9093
     networks:
       - net
-
   prometheus-msteams:
     image: idealista/prom2teams:2.7.0
     environment:
@@ -112,6 +239,6 @@ services:
           memory: 64M
           cpus: "0.25"
     ports:
-      - 49500:8089
+      - 48089:8089
     networks:
       - net
