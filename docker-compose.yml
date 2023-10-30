@@ -29,12 +29,13 @@ services:
     networks:
       - net
   zabbix-server:
-    image: zabbix/zabbix-server-pgsql:centos-6.0.21
+    image:  zabbix-server:v2
+    #image: zabbix/zabbix-server-pgsql:centos-6.0.21
     privileged: true
     user: root
     volumes:
       - ${STACK_VOLUME}/zabbix/data/usr/lib/zabbix/alertscripts:/usr/lib/zabbix/alertscripts:ro
-      - ${STACK_VOLUME}/zabbix/data/usr/lib/zabbix/extrnalscripts:/usr/lib/zabbix/externalscripts:ro
+      - ${STACK_VOLUME}/zabbix/data/usr/lib/zabbix/externalscripts:/usr/lib/zabbix/externalscripts:ro
       - ${STACK_VOLUME}/zabbix/data/var/lib/zabbix/modules:/var/lib/zabbix/modules:ro
       - ${STACK_VOLUME}/zabbix/data/var/lib/zabbix/enc:/var/lib/zabbix/enc:ro
       - ${STACK_VOLUME}/zabbix/data/var/lib/zabbix/ssh_keys:/var/lib/zabbix/ssh_keys:ro
@@ -50,8 +51,10 @@ services:
       - POSTGRES_PASSWORD=
       - PGSQL_ROOT_PASSWORD=
       - ZBX_ENABLE_SNMP_TRAPS=true
-      - ZBX_STARTPOLLERS=5
-      - ZBX_STARTPINGERS=1
+      - ZBX_STARTPOLLERS=56
+      - ZBX_STARTPINGERS=10
+      - CACHESIZE=1G
+      - ZBX_STARTPOLLERSUNREACHABLE=10
       - ZBX_LISTENPORT=10051
       - ZBX_HOUSEKEEPINGFREQUENCY=1
       - ZBX_MAXHOUSEKEEPERDELETE=5000
@@ -78,7 +81,7 @@ services:
       resources:
         limits:
           cpus: "1"
-          memory: 1280M
+          memory: 1650M
         reservations:
           memory: 768M
           cpus: "0.5"
@@ -86,17 +89,7 @@ services:
       - 10051:10051
     networks:
       - net
-  zabbix-agent:
-    user: root
-    image: zabbix/zabbix-agent2:6.0-alpine-latest
-    volumes:
-      - ${STACK_VOLUME}/zabbix/zabbix-agent/data/var/run:/var/run
-    privileged: true
-    ports:
-      - '10050:10050'
-    environment:
-      - ZBX_HOSTNAME=Zabbix server
-      - ZBX_SERVER_HOST=zabbix-server
+
   zabbix-frontend:
     image: zabbix/zabbix-web-nginx-pgsql:6.0-ubuntu-latest
     ports:
@@ -104,7 +97,7 @@ services:
       - '8443:8443'
     environment:
       - PHP_TZ=America/Sao_Paulo
-      - ZBX_SERVER_NAME=
+      - ZBX_SERVER_NAME=XPTO
       - DB_SERVER_HOST=pgsql
       - POSTGRES_DB=zabbix_db
       - POSTGRES_USER=root
@@ -139,9 +132,6 @@ services:
     volumes:
       - ${STACK_VOLUME}/grafana/data:/var/lib/grafana
       - ${STACK_VOLUME}/grafana/imagens:/usr/share/grafana/public/imagens
-     # - ${STACK_VOLUME}/grafana/provisioning/:/etc/grafana/provisioning
-     #  - ${STACK_VOLUME}/grafana/public/img/:/usr/share/grafana/public/img:ro
-     # - ${STACK_VOLUME}/grafana/public/img/:/etc/grafana/public/img:ro
     environment:
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
       - GF_AUTH_ANONYMOUS_ENABLED=true
