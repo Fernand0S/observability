@@ -4,38 +4,14 @@ networks:
     driver: overlay
     attachable: true
 services:
-  pgsql:
-    image: postgres:13
-    volumes:
-      - ${STACK_VOLUME}/pgsql/data/:/var/lib/postgresql/data
-    environment:
-      - TZ=America/Sao_Paulo
-      - POSTGRES_DB=zabbix_db
-      - POSTGRES_USER=root
-      - POSTGRES_PASSWORD=
-      - PGSQL_ROOT_PASSWORD=
-    deploy:
-      restart_policy:
-        condition: on-failure
-      resources:
-        limits:
-          cpus: "1"
-          memory: 512M
-        reservations:
-          memory: 256M
-          cpus: "0.5"
-    ports:
-      - 45432:5432
-    networks:
-      - net
   zabbix-server:
-    image:  zabbix-server:v2
-    #image: zabbix/zabbix-server-pgsql:centos-6.0.21
+    #image: zabbix-server:v1
+    image: zabbix/zabbix-server-mysql:6.4.11-centos
     privileged: true
     user: root
     volumes:
       - ${STACK_VOLUME}/zabbix/data/usr/lib/zabbix/alertscripts:/usr/lib/zabbix/alertscripts:ro
-      - ${STACK_VOLUME}/zabbix/data/usr/lib/zabbix/externalscripts:/usr/lib/zabbix/externalscripts:ro
+      - ${STACK_VOLUME}/zabbix/data/usr/lib/zabbix/externalscripts:/usr/lib/zabbix/externalscripts:rw
       - ${STACK_VOLUME}/zabbix/data/var/lib/zabbix/modules:/var/lib/zabbix/modules:ro
       - ${STACK_VOLUME}/zabbix/data/var/lib/zabbix/enc:/var/lib/zabbix/enc:ro
       - ${STACK_VOLUME}/zabbix/data/var/lib/zabbix/ssh_keys:/var/lib/zabbix/ssh_keys:ro
@@ -44,14 +20,13 @@ services:
       - ${STACK_VOLUME}/zabbix/data/var/lib/zabbix/ssl/certs:/var/lib/zabbix/ssl/certs:ro
       - ${STACK_VOLUME}/zabbix/data/var/lib/zabbix/ssl/keys:/var/lib/zabbix/ssl/keys:ro
     environment:
-      - TZ=America/Sao_Paulo
-      - DB_SERVER_HOST=pgsql
-      - POSTGRES_DB=zabbix_db
-      - POSTGRES_USER=root
-      - POSTGRES_PASSWORD=
-      - PGSQL_ROOT_PASSWORD=
-      - ZBX_ENABLE_SNMP_TRAPS=true
-      - ZBX_STARTPOLLERS=56
+      - TZ=Africa/Luanda
+      - DB_SERVER_HOST=
+      - MYSQL_USER=
+      - MYSQL_PASSWORD=
+      - MYSQL_DATABASE=
+      - ZBX_CACHESIZE=128M
+      - ZBX_STARTPOLLERS=5
       - ZBX_STARTPINGERS=10
       - CACHESIZE=1G
       - ZBX_STARTPOLLERSUNREACHABLE=10
@@ -73,47 +48,54 @@ services:
       - ZBX_UNAVAILABLEDELAY=60
       - ZBX_UNREACHABLEDELAY=15
       - ZBX_LOGSLOWQUERIES=3000
-    depends_on:
-      - pgsql
+      - ZBX_STARTVMWARECOLLECTORS=5
+      - ZBX_VMWAREFREQUENCY=60
+      - ZBX_VMWAREPERFFREQUENCY=60
+      - ZBX_VMWARECACHESIZE=8M
+      - ZBX_VMWARETIMEOUT=10
+      - ZBX_ENABLE_SNMP_TRAPS=true
+      - ZBX_WEBSERVICEURL=http://zabbix-reports:10053/report
+      - ZBX_STARTREPORTWRITERS=3
+      - ZBX_ALLOWEDIP=127.0.0.1,::1,0.0.0.0/0,zabbix
+      - ZBX_STARTTRAPPERS=5
     deploy:
       restart_policy:
         condition: on-failure
       resources:
         limits:
           cpus: "1"
-          memory: 1650M
+          memory: 1024M
         reservations:
-          memory: 768M
+          memory: 512M
           cpus: "0.5"
     ports:
       - 10051:10051
     networks:
       - net
-
   zabbix-frontend:
-    image: zabbix/zabbix-web-nginx-pgsql:6.0-ubuntu-latest
+    #image: zabbix/zabbix-web-nginx-mysql:6.0-ubuntu-latest
+    image: zabbix/zabbix-web-nginx-mysql:6.4.11-ubuntu
     ports:
-      - '49080:8080'
+      - '49083:8080'
       - '8443:8443'
     environment:
-      - PHP_TZ=America/Sao_Paulo
-      - ZBX_SERVER_NAME=XPTO
-      - DB_SERVER_HOST=pgsql
-      - POSTGRES_DB=zabbix_db
-      - POSTGRES_USER=root
-      - POSTGRES_PASSWORD=
-      - PGSQL_ROOT_PASSWORD=   
+      - PHP_TZ=Africa/Luanda
+      - ZBX_SERVER_NAME=Velonet Teleinformatica LDA.
+      - DB_SERVER_HOST=
+      - MYSQL_USER=
+      - MYSQL_PASSWORD=
+      - MYSQL_DATABASE=
       - ZBX_SERVER_HOST=zabbix-server
       - ZBX_HOSTNAME=Zabbix server
       - ZBX_SERVER_PORT=10051
     depends_on:
-      - pgsql
       - zabbix-server
     networks:
       - net
   zabbix-snmptraps:
     user: root
-    image: zabbix/zabbix-snmptraps:6.0-centos-latest
+    #image: zabbix/zabbix-snmptraps:6.0-centos-latest
+    image: zabbix/zabbix-snmptraps:6.4.11-centos
     volumes:
       - ${STACK_VOLUME}/zabbix/data/var/lib/zabbix/snmptraps:/var/lib/zabbix/snmptraps:rw
     privileged: true
@@ -126,17 +108,34 @@ services:
       - zabbix-server
     networks:
       - net
+  zabbix-reports:
+    user: root
+    #image: zabbix/zabbix-web-service:6.0.25-centos
+    image: zabbix/zabbix-web-service:6.4.11-centos
+    privileged: true
+    environment:
+      - ZBX_LISTENPORT=10053
+      - ZBX_ALLOWEDIP=127.0.0.1,::1,0.0.0.0/0,zabbix
+      - ZBX_DEBUGLEVEL=4
+    cap_add:
+      - SYS_ADMIN
+    depends_on:
+      - zabbix-server
+      - zabbix-frontend
+    networks:
+      - net
   grafana:
     image: grafana/grafana:8.5.10-ubuntu
     user: root
     volumes:
-      - ${STACK_VOLUME}/grafana/data:/var/lib/grafana
-      - ${STACK_VOLUME}/grafana/imagens:/usr/share/grafana/public/imagens
+      - ${STACK_VOLUME}/grafana/data:/var/lib/grafana:rw
+      - ${STACK_VOLUME}/grafana/imagens:/usr/share/grafana/public/imagens:rw
     environment:
-      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+     - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_PANELS_DISABLE_SANITIZE_HTML=true
       - GF_AUTH_ANONYMOUS_ENABLED=true
-      - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
-      - TZ=America/Sao_Paulo
+      - GF_PATHS_PROVISIONING=/etc/grafana/provisioning:rw
+      - TZ=Africa/Luanda
       - GF_INSTALL_PLUGINS=${INSTALL_PLUGINS}
       - GF_SERVER_ROOT_URL=${URL_GRAFANA}
       - GF_SMTP_ENABLED=true
@@ -150,11 +149,11 @@ services:
       resources:
         limits:
           cpus: "1"
-          memory: 1024M
+          memory: 2048M
         reservations:
-          memory: 512M
+          memory: 1024M
           cpus: "0.5"
     ports:
-      - 49300:3000
+      - 49084:3000
     networks:
       - net
