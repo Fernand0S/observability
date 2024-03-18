@@ -1,0 +1,128 @@
+version: '3.8'
+networks:
+  net:
+    driver: overlay
+    attachable: true
+services:
+  pgsql:
+    image: postgres:13
+    volumes:
+        - ${STACK_VOLUME}/pgsql/data/:/var/lib/postgresql/data:rw
+    environment:
+      - TZ=Africa/Luanda
+      - POSTGRES_DB=zabbix_db
+      - POSTGRES_USER=root
+      - POSTGRES_PASSWORD=4/GZ^0ZOKe0p
+      - PGSQL_ROOT_PASSWORD=4/GZ^0ZOKe0p
+    deploy:
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          cpus: "1"
+          memory: 512M
+        reservations:
+          memory: 256M
+          cpus: "0.5"
+    ports:
+      - 45432:5432
+    networks:
+      - net
+  zabbix-server:
+    #image:  zabbix-server:v2
+    image: zabbix/zabbix-server-pgsql:6.4.12-centos
+    privileged: true
+    user: root
+    volumes:
+      - ${STACK_VOLUME}/zabbix/data/usr/lib/zabbix/alertscripts:/usr/lib/zabbix/alertscripts:ro
+      - ${STACK_VOLUME}/zabbix/data/usr/lib/zabbix/externalscripts:/usr/lib/zabbix/externalscripts:ro
+      - ${STACK_VOLUME}/zabbix/data/var/lib/zabbix/modules:/var/lib/zabbix/modules:ro
+      - ${STACK_VOLUME}/zabbix/data/var/lib/zabbix/enc:/var/lib/zabbix/enc:ro
+      - ${STACK_VOLUME}/zabbix/data/var/lib/zabbix/ssh_keys:/var/lib/zabbix/ssh_keys:ro
+      - ${STACK_VOLUME}/zabbix/data/var/lib/zabbix/mibs:/var/lib/zabbix/mibs:ro
+      - ${STACK_VOLUME}/zabbix/data/var/lib/zabbix/snmptraps:/var/lib/zabbix/snmptraps:ro
+      - ${STACK_VOLUME}/zabbix/data/var/lib/zabbix/ssl/certs:/var/lib/zabbix/ssl/certs:ro
+      - ${STACK_VOLUME}/zabbix/data/var/lib/zabbix/ssl/keys:/var/lib/zabbix/ssl/keys:ro
+    environment:
+      - TZ=Africa/Luanda
+      - DB_SERVER_HOST=pgsql
+      - POSTGRES_DB=zabbix_db
+      - POSTGRES_USER=root
+      - POSTGRES_PASSWORD=4/GZ^0ZOKe0p
+      - PGSQL_ROOT_PASSWORD=4/GZ^0ZOKe0p
+      - ZBX_ENABLE_SNMP_TRAPS=true
+      - ZBX_STARTPOLLERS=5
+      - ZBX_STARTPINGERS=10
+      - CACHESIZE=1G
+      - ZBX_STARTPOLLERSUNREACHABLE=10
+      - ZBX_LISTENPORT=10051
+      - ZBX_HOUSEKEEPINGFREQUENCY=1
+      - ZBX_MAXHOUSEKEEPERDELETE=5000
+      - ZBX_PROBLEMHOUSEKEEPINGFREQUENCY=60
+      - ZBX_SENDERFREQUENCY=30
+      - ZBX_CACHEUPDATEFREQUENCY=10
+      - ZBX_STARTDBSYNCERS=4
+      - ZBX_EXPORTFILESIZE=1G
+      - ZBX_HISTORYCACHESIZE=16M
+      - ZBX_HISTORYINDEXCACHESIZE=4M
+      - ZBX_HISTORYSTORAGEDATEINDEX=0
+      - ZBX_TRENDCACHESIZE=4M
+      - ZBX_TRENDFUNCTIONCACHESIZE=4M
+      - ZBX_VALUECACHESIZE=8M
+      - ZBX_UNREACHABLEPERIOD=45
+      - ZBX_UNAVAILABLEDELAY=60
+      - ZBX_UNREACHABLEDELAY=15
+      - ZBX_LOGSLOWQUERIES=3000
+    depends_on:
+      - pgsql
+    deploy:
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          cpus: "1"
+          memory: 512M
+        reservations:
+          memory: 256M
+          cpus: "0.5"
+    ports:
+      - 10051:10051
+    networks:
+      - net
+
+  zabbix-frontend:
+    image: zabbix/zabbix-web-nginx-pgsql:ubuntu-6.4.12
+    ports:
+      - '49080:8080'
+      - '8443:8443'
+    environment:
+      - PHP_TZ=Africa/Luanda
+      - ZBX_SERVER_NAME=Velonet Teleinformatica LDA.
+      - DB_SERVER_HOST=pgsql
+      - POSTGRES_DB=zabbix_db
+      - POSTGRES_USER=root
+      - POSTGRES_PASSWORD=4/GZ^0ZOKe0p
+      - PGSQL_ROOT_PASSWORD=4/GZ^0ZOKe0p  
+      - ZBX_SERVER_HOST=zabbix-server
+      - ZBX_HOSTNAME=Zabbix server
+      - ZBX_SERVER_PORT=10051
+    depends_on:
+      - pgsql
+      - zabbix-server
+    networks:
+      - net
+  zabbix-snmptraps:
+    user: root
+    image: zabbix/zabbix-snmptraps:6.4.12-centos
+    volumes:
+      - ${STACK_VOLUME}/zabbix/data/var/lib/zabbix/snmptraps:/var/lib/zabbix/snmptraps:rw
+    privileged: true
+    ports:
+      - "161:161/udp"
+    environment:
+      - ZBX_HOSTNAME=Zabbix server
+      - ZBX_SERVER_HOST=zabbix-server
+    links:
+      - zabbix-server
+    networks:
+      - net
