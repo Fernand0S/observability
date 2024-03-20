@@ -1,0 +1,36 @@
+version: '3.8'
+networks:
+  net:
+    driver: overlay
+    attachable: true
+services:
+  grafana:
+    image: grafana/grafana:10.3.3-ubuntu
+    user: root
+    volumes:
+      - ${STACK_VOLUME}/grafana2/data:/var/lib/grafana:rw
+      - ${STACK_VOLUME}/grafana2/imagens:/usr/share/grafana/public/imagens:rw
+    environment:
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_PATHS_PROVISIONING=/etc/grafana/provisioning:rw
+      - TZ=Africa/Luanda
+      - GF_INSTALL_PLUGINS=grafana-strava-datasource,grafana-piechart-panel,jdbranham-diagram-panel,snuids-trafficlights-panel,camptocamp-prometheus-alertmanager-datasource,doitintl-bigquery-datasource,grafana-clock-panel,agenty-flowcharting-panel,alexanderzobnin-zabbix-app
+      - GF_SERVER_ROOT_URL=${URL_GRAFANA}
+      - GF_SMTP_ENABLED=true
+      - GF_SMTP_HOST=${SMTP_HOST}
+
+    deploy:
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          cpus: "1"
+          memory: 512M
+        reservations:
+          memory: 368M
+          cpus: "0.5"
+    ports:
+      - 49300:3000
+    networks:
+      - net
